@@ -1,13 +1,16 @@
 import { create } from 'zustand';
-import type { GameState, GameActions, Solution } from '@/types';
+import type { GameState, GameActions, Solution, Report } from '@/types';
 import { DEFAULT_PARAMS } from '@/utils/constants';
 import {
   calculateMetrics,
   calculateRisks,
   calculateScore,
+  generateSuggestions,
+  generateReportSummary,
 } from '@/utils/calculator';
 
 const SOLUTIONS_KEY = 'meal_delivery_solutions';
+const REPORTS_KEY = 'meal_delivery_reports';
 const LAST_PARAMS_KEY = 'meal_delivery_last_params';
 
 function loadSolutions(): Solution[] {
@@ -24,6 +27,23 @@ function saveSolutions(solutions: Solution[]) {
     localStorage.setItem(SOLUTIONS_KEY, JSON.stringify(solutions));
   } catch (e) {
     console.error('Failed to save solutions:', e);
+  }
+}
+
+function loadReports(): Report[] {
+  try {
+    const data = localStorage.getItem(REPORTS_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveReports(reports: Report[]) {
+  try {
+    localStorage.setItem(REPORTS_KEY, JSON.stringify(reports));
+  } catch (e) {
+    console.error('Failed to save reports:', e);
   }
 }
 
@@ -57,9 +77,13 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   metrics: initialMetrics,
   risks: initialRisks,
   solutions: loadSolutions(),
+  reports: loadReports(),
   currentScore: initialScoreResult.score,
   riskDeduction: initialScoreResult.riskDeduction,
   showSettlement: false,
+  showReportModal: false,
+  showReportList: false,
+  selectedReport: null,
   selectedSolutions: [],
 
   setParams: (newParams) => {
@@ -142,5 +166,57 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
   toggleSettlement: () => {
     set((state) => ({ showSettlement: !state.showSettlement }));
+  },
+
+  generateReport: (name) => {
+    set((state) => {
+      const suggestions = generateSuggestions(state.params, state.metrics, state.risks);
+      const newReport: Report = {
+        id: Date.now().toString(),
+        name,
+        params: { ...state.params },
+        metrics: { ...state.metrics },
+        risks: [...state.risks],
+        score: state.currentScore,
+        riskDeduction: state.riskDeduction,
+        suggestions,
+        createdAt: Date.now(),
+      };
+      const summary = generateReportSummary(newReport, state.reports);
+      newReport.summary = summary;
+      const updatedReports = [...state.reports, newReport];
+      saveReports(updatedReports);
+      return { reports: updatedReports, selectedReport: newReport, showReportModal: true };
+    });
+  },
+
+  deleteReport: (id) => {
+    set((state) => {
+      const updatedReports = state.reports.filter((r) => r.id !== id);
+      saveReports(updatedReports);
+      return {
+        reports: updatedReports,
+        selectedReport: state.selectedReport?.id === id ? null : state.selectedReport,
+      };
+    });
+  },
+
+  loadReportParams: (id) => {
+    const report = get().reports.find((r) => r.id === id);
+    if (report) {
+      get().setParams(report.params);
+    }
+  },
+
+  toggleReportModal: () => {
+    set((state) => ({ showReportModal: !state.showReportModal }));
+  },
+
+  toggleReportList: () => {
+    set((state) => ({ showReportList: !state.showReportList }));
+  },
+
+  setSelectedReport: (report) => {
+    set({ selectedReport: report, showReportModal: report !== null });
   },
 }));

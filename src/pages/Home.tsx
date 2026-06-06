@@ -3,7 +3,9 @@ import { ParameterPanel } from '@/components/ParameterPanel';
 import { MetricsPanel } from '@/components/MetricsPanel';
 import { RiskPanel } from '@/components/RiskPanel';
 import { SolutionManager } from '@/components/SolutionManager';
+import { ReportManager } from '@/components/ReportManager';
 import { SettlementModal } from '@/components/SettlementModal';
+import { ReportModal } from '@/components/ReportModal';
 import { useGameStore } from '@/store/gameStore';
 
 export default function Home() {
@@ -62,6 +64,7 @@ export default function Home() {
 
           <div className="lg:col-span-4 space-y-6">
             <MetricsPanel />
+            <ReportManager />
             <SolutionManager />
           </div>
 
@@ -80,6 +83,7 @@ export default function Home() {
       </footer>
 
       <SettlementModal />
+      <ReportModal />
     </div>
   );
 }

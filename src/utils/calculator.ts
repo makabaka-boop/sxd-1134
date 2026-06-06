@@ -1,5 +1,5 @@
-import type { GameParams, Metrics, RiskItem } from '@/types';
-import { BASE_DEMAND, RISK_THRESHOLDS, DEDUCTION_RULES } from './constants';
+import type { GameParams, Metrics, RiskItem, OptimizationSuggestion, ReportSummary, Report } from '@/types';
+import { BASE_DEMAND, RISK_THRESHOLDS, DEDUCTION_RULES, PARAM_RANGES } from './constants';
 
 export function calculateMetrics(params: GameParams): Metrics {
   const { mealCount, deliveryBatches, volunteerGroups } = params;
@@ -169,4 +169,139 @@ export function getScoreGrade(score: number): { grade: string; color: string } {
   if (score >= 60) return { grade: 'C', color: 'text-blue-500' };
   if (score >= 40) return { grade: 'D', color: 'text-orange-500' };
   return { grade: 'F', color: 'text-red-500' };
+}
+
+export function generateSuggestions(
+  params: GameParams,
+  metrics: Metrics,
+  risks: RiskItem[]
+): OptimizationSuggestion[] {
+  const suggestions: OptimizationSuggestion[] = [];
+  let idCounter = 0;
+
+  if (metrics.coverageRate < 70) {
+    suggestions.push({
+      id: `sugg_${idCounter++}`,
+      category: 'parameter',
+      title: '提升备餐数量',
+      description: `当前覆盖率仅为${metrics.coverageRate}%，建议增加备餐数量至${Math.min(500, params.mealCount + 50)}份以提升服务覆盖范围。`,
+      impact: 'high',
+    });
+  }
+
+  if (metrics.waitTime > 40) {
+    suggestions.push({
+      id: `sugg_${idCounter++}`,
+      category: 'parameter',
+      title: '增加配送批次',
+      description: `等待时长${metrics.waitTime}分钟过长，建议将配送批次从${params.deliveryBatches}次增加至${Math.min(8, params.deliveryBatches + 2)}次以减少等待。`,
+      impact: 'high',
+    });
+  }
+
+  if (metrics.wasteRate > 25) {
+    suggestions.push({
+      id: `sugg_${idCounter++}`,
+      category: 'parameter',
+      title: '优化备餐数量',
+      description: `浪费率达${metrics.wasteRate}%，建议适当减少备餐数量或增加配送批次以降低餐食浪费。`,
+      impact: 'medium',
+    });
+  }
+
+  if (metrics.workPressure > 60) {
+    suggestions.push({
+      id: `sugg_${idCounter++}`,
+      category: 'parameter',
+      title: '增加志愿者分组',
+      description: `人力压力指数${metrics.workPressure}过高，建议将志愿者分组从${params.volunteerGroups}组增加至${Math.min(10, params.volunteerGroups + 2)}组以分担工作压力。`,
+      impact: 'medium',
+    });
+  }
+
+  const coverageRisk = risks.find(r => r.id === 'coverageRate');
+  if (coverageRisk?.isOverThreshold) {
+    suggestions.push({
+      id: `sugg_${idCounter++}`,
+      category: 'risk',
+      title: '解决覆盖率不足风险',
+      description: `覆盖率低于阈值${RISK_THRESHOLDS.coverageRate}%，已产生${coverageRisk.deduction}分扣分，请优先提升备餐数量和配送批次。`,
+      impact: 'high',
+    });
+  }
+
+  const wasteRisk = risks.find(r => r.id === 'wasteRate');
+  if (wasteRisk?.isOverThreshold) {
+    suggestions.push({
+      id: `sugg_${idCounter++}`,
+      category: 'risk',
+      title: '控制餐食浪费风险',
+      description: `浪费率超过阈值${RISK_THRESHOLDS.wasteRate}%，已产生${wasteRisk.deduction}分扣分，建议精细化备餐管理。`,
+      impact: 'medium',
+    });
+  }
+
+  const overRiskThreshold = risks.find(r => r.id === 'overRiskThreshold');
+  if (overRiskThreshold?.isOverThreshold) {
+    suggestions.push({
+      id: `sugg_${idCounter++}`,
+      category: 'risk',
+      title: '降低综合风险值',
+      description: `综合风险值${overRiskThreshold.value}超过当前阈值${params.riskThreshold}，已额外扣分，请综合优化各项参数。`,
+      impact: 'high',
+    });
+  }
+
+  if (metrics.coverageRate >= 85 && metrics.waitTime <= 25 && metrics.wasteRate <= 15) {
+    suggestions.push({
+      id: `sugg_${idCounter++}`,
+      category: 'metric',
+      title: '保持优秀运营状态',
+      description: '当前各项指标表现优秀，请继续保持，并可尝试微调参数以追求更高得分。',
+      impact: 'low',
+    });
+  }
+
+  if (params.volunteerGroups === PARAM_RANGES.volunteerGroups.max && metrics.workPressure > 40) {
+    suggestions.push({
+      id: `sugg_${idCounter++}`,
+      category: 'parameter',
+      title: '志愿者资源已达上限',
+      description: '志愿者分组已达最大配置，建议通过优化配送批次来进一步降低人力压力。',
+      impact: 'medium',
+    });
+  }
+
+  return suggestions;
+}
+
+export function generateReportSummary(
+  currentReport: Pick<Report, 'score' | 'metrics' | 'risks'>,
+  reports: Report[]
+): ReportSummary {
+  const sortedReports = [...reports].sort((a, b) => b.score - a.score);
+  const bestReport = sortedReports[0];
+
+  const scoreDiff = bestReport ? currentReport.score - bestReport.score : 0;
+
+  const weakMetrics: string[] = [];
+  if (currentReport.metrics.coverageRate < 70) weakMetrics.push('覆盖率');
+  if (currentReport.metrics.waitTime > 40) weakMetrics.push('等待时长');
+  if (currentReport.metrics.wasteRate > 25) weakMetrics.push('浪费率');
+  if (currentReport.metrics.workPressure > 60) weakMetrics.push('人力压力');
+
+  const riskAlerts = currentReport.risks
+    .filter(r => r.isOverThreshold)
+    .map(r => r.name);
+
+  return {
+    scoreDiff,
+    weakMetrics,
+    riskAlerts,
+  };
+}
+
+export function getBestReport(reports: Report[]): Report | null {
+  if (reports.length === 0) return null;
+  return [...reports].sort((a, b) => b.score - a.score)[0];
 }

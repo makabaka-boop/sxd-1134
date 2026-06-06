@@ -3,7 +3,7 @@ import { useGameStore } from '@/store/gameStore';
 import { getScoreGrade } from '@/utils/calculator';
 
 export function SettlementModal() {
-  const { showSettlement, toggleSettlement, currentScore, riskDeduction } =
+  const { showSettlement, toggleSettlement, currentScore } =
     useGameStore();
 
   const { grade, color } = getScoreGrade(currentScore);
@@ -65,14 +65,6 @@ export function SettlementModal() {
               ))}
             </div>
           </div>
-
-          {riskDeduction > 0 && (
-            <div className="p-4 bg-red-50 border border-red-100 rounded-xl text-center">
-              <div className="text-sm text-red-600">
-                风险扣分：<span className="font-bold">-{riskDeduction} 分</span>
-              </div>
-            </div>
-          )}
 
           <div className="mt-6 text-center">
             <button

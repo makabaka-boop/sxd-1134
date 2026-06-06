@@ -144,8 +144,7 @@ export function calculateRiskValue(risks: RiskItem[]): number {
 
 export function calculateScore(
   metrics: Metrics,
-  risks: RiskItem[],
-  riskThreshold: number
+  risks: RiskItem[]
 ): { score: number; riskDeduction: number } {
   const baseScore =
     metrics.coverageRate * 0.3 +
@@ -154,18 +153,12 @@ export function calculateScore(
     (100 - metrics.workPressure) * 0.2;
 
   const riskDeduction = risks.reduce((sum, r) => sum + r.deduction, 0);
-  const riskValue = calculateRiskValue(risks);
 
-  let extraDeduction = 0;
-  if (riskValue > riskThreshold) {
-    extraDeduction = DEDUCTION_RULES.overThreshold;
-  }
-
-  const finalScore = Math.max(0, Math.round(baseScore - riskDeduction - extraDeduction));
+  const finalScore = Math.max(0, Math.round(baseScore - riskDeduction));
 
   return {
     score: finalScore,
-    riskDeduction: riskDeduction + extraDeduction,
+    riskDeduction,
   };
 }
 

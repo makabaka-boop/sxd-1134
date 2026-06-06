@@ -3,9 +3,10 @@ import { useGameStore } from '@/store/gameStore';
 import { calculateRiskValue } from '@/utils/calculator';
 
 export function RiskPanel() {
-  const { risks } = useGameStore();
+  const { risks, params } = useGameStore();
   const riskValue = calculateRiskValue(risks);
   const overThresholdCount = risks.filter((r) => r.isOverThreshold).length;
+  const overRiskThreshold = risks.find((r) => r.id === 'overRiskThreshold');
 
   const getRiskLevel = () => {
     if (riskValue >= 70)
@@ -139,7 +140,16 @@ export function RiskPanel() {
           <li>• 等待时长超过 40 分钟：扣 10 分</li>
           <li>• 浪费率超过 30%：扣 15 分</li>
           <li>• 人力压力超过 70：扣 10 分</li>
-          <li>• 综合风险超阈值：额外扣 5 分</li>
+          <li
+            className={
+              overRiskThreshold?.isOverThreshold
+                ? 'text-red-500 font-medium'
+                : 'text-gray-400'
+            }
+          >
+            • 综合风险超过当前阈值 {params.riskThreshold}：
+            {overRiskThreshold?.isOverThreshold ? '已额外扣 5 分' : '暂不扣分'}
+          </li>
         </ul>
       </div>
     </div>

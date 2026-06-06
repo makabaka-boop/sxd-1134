@@ -49,8 +49,7 @@ const initialMetrics = calculateMetrics(initialParams);
 const initialRisks = calculateRisks(initialMetrics, initialParams.riskThreshold);
 const initialScoreResult = calculateScore(
   initialMetrics,
-  initialRisks,
-  initialParams.riskThreshold
+  initialRisks
 );
 
 export const useGameStore = create<GameState & GameActions>((set, get) => ({
@@ -70,8 +69,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       const risks = calculateRisks(metrics, updatedParams.riskThreshold);
       const { score, riskDeduction } = calculateScore(
         metrics,
-        risks,
-        updatedParams.riskThreshold
+        risks
       );
       saveLastParams(updatedParams);
       return {
@@ -90,8 +88,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       const risks = calculateRisks(metrics, state.params.riskThreshold);
       const { score, riskDeduction } = calculateScore(
         metrics,
-        risks,
-        state.params.riskThreshold
+        risks
       );
       return { metrics, risks, currentScore: score, riskDeduction };
     });

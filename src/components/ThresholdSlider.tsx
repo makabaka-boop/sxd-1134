@@ -42,6 +42,16 @@ export function ThresholdSlider({
     [updateValueFromPosition]
   );
 
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      setIsDragging(true);
+      if (e.touches.length > 0) {
+        updateValueFromPosition(e.touches[0].clientX);
+      }
+    },
+    [updateValueFromPosition]
+  );
+
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (isDragging) {
@@ -49,18 +59,29 @@ export function ThresholdSlider({
       }
     };
 
-    const handleMouseUp = () => {
+    const handleTouchMove = (e: TouchEvent) => {
+      if (isDragging && e.touches.length > 0) {
+        e.preventDefault();
+        updateValueFromPosition(e.touches[0].clientX);
+      }
+    };
+
+    const handleEnd = () => {
       setIsDragging(false);
     };
 
     if (isDragging) {
       document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener('mouseup', handleEnd);
+      document.addEventListener('touchmove', handleTouchMove, { passive: false });
+      document.addEventListener('touchend', handleEnd);
     }
 
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('mouseup', handleEnd);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleEnd);
     };
   }, [isDragging, updateValueFromPosition]);
 
@@ -79,8 +100,9 @@ export function ThresholdSlider({
 
       <div
         ref={sliderRef}
-        className="relative h-8 bg-gray-100 rounded-lg cursor-pointer select-none overflow-hidden"
+        className="relative h-8 bg-gray-100 rounded-lg cursor-pointer select-none overflow-hidden touch-none"
         onMouseDown={handleMouseDown}
+        onTouchStart={handleTouchStart}
       >
         <div
           className="absolute top-0 left-0 h-full bg-gradient-to-r from-teal-400 to-teal-500 transition-all duration-150"
@@ -107,10 +129,12 @@ export function ThresholdSlider({
         </div>
 
         <div
-          className="absolute top-1/2 -translate-y-1/2 w-5 h-5 bg-white border-2 border-teal-500 rounded-full shadow-md cursor-grab active:cursor-grabbing transition-shadow duration-150 hover:shadow-lg"
-          style={{ left: `calc(${percentage}% - 10px)` }}
+          className={`absolute top-1/2 -translate-y-1/2 w-6 h-6 bg-white border-2 border-teal-500 rounded-full shadow-md transition-shadow duration-150 hover:shadow-lg ${
+            isDragging ? 'cursor-grabbing shadow-lg scale-110' : 'cursor-grab'
+          }`}
+          style={{ left: `calc(${percentage}% - 12px)` }}
         >
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-teal-500 rounded-full" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-teal-500 rounded-full" />
         </div>
       </div>
 

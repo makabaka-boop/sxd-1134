@@ -32,11 +32,36 @@ export function calculateMetrics(params: GameParams): Metrics {
   };
 }
 
+function calculateBaseRiskValue(metrics: Metrics): number {
+  let overCount = 0;
+  let totalDeduction = 0;
+
+  if (metrics.coverageRate < RISK_THRESHOLDS.coverageRate) {
+    overCount++;
+    totalDeduction += DEDUCTION_RULES.coverageRate;
+  }
+  if (metrics.waitTime > RISK_THRESHOLDS.waitTime) {
+    overCount++;
+    totalDeduction += DEDUCTION_RULES.waitTime;
+  }
+  if (metrics.wasteRate > RISK_THRESHOLDS.wasteRate) {
+    overCount++;
+    totalDeduction += DEDUCTION_RULES.wasteRate;
+  }
+  if (metrics.workPressure > RISK_THRESHOLDS.workPressure) {
+    overCount++;
+    totalDeduction += DEDUCTION_RULES.workPressure;
+  }
+
+  return Math.min(100, overCount * 25 + totalDeduction * 0.8);
+}
+
 export function calculateRisks(
   metrics: Metrics,
   riskThreshold: number
 ): RiskItem[] {
   const risks: RiskItem[] = [];
+  const baseRiskValue = calculateBaseRiskValue(metrics);
 
   risks.push({
     id: 'coverageRate',
@@ -96,12 +121,24 @@ export function calculateRisks(
         : 'low',
   });
 
+  risks.push({
+    id: 'overRiskThreshold',
+    name: '综合风险超阈值',
+    value: Math.round(baseRiskValue),
+    threshold: riskThreshold,
+    isOverThreshold: baseRiskValue > riskThreshold,
+    deduction:
+      baseRiskValue > riskThreshold ? DEDUCTION_RULES.overThreshold : 0,
+    level: baseRiskValue > riskThreshold ? 'high' : 'low',
+  });
+
   return risks;
 }
 
 export function calculateRiskValue(risks: RiskItem[]): number {
-  const overCount = risks.filter((r) => r.isOverThreshold).length;
-  const totalDeduction = risks.reduce((sum, r) => sum + r.deduction, 0);
+  const filteredRisks = risks.filter((r) => r.id !== 'overRiskThreshold');
+  const overCount = filteredRisks.filter((r) => r.isOverThreshold).length;
+  const totalDeduction = filteredRisks.reduce((sum, r) => sum + r.deduction, 0);
   return Math.min(100, overCount * 25 + totalDeduction * 0.8);
 }
 
